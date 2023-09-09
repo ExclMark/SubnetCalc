@@ -1,5 +1,5 @@
 # IPv4 Network Subnet Calculator
-Simple console-based subnet calculator.
+Simple console-based [subnet](https://en.wikipedia.org/wiki/Subnet) calculator. Uses ipaddress module.
 
 Calculate Network address, subnet mask, CIDR notation, Broadcast address, IP ranges and numbers of host.
 
