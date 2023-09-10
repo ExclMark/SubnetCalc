@@ -1,10 +1,10 @@
 # IPv4 Network Subnet Calculator
 Simple console-based [subnet](https://en.wikipedia.org/wiki/Subnet) calculator. Uses ipaddress module.
 
-Calculate Network address, subnet mask, CIDR notation, Broadcast address, IP ranges and number of hosts.
+Allows you to subnet/supernet any given network, and provides different useful info about IPv4 address.
 
 # Preview:
-<img width="539" alt="subnet_calc" src="https://github.com/ExclMark/SubnetCalc/assets/43936063/03d2ade9-7d64-41a7-82c5-fa317a284e2c">
+<img width="657" alt="subnet_calculator" src="https://github.com/ExclMark/SubnetCalc/assets/43936063/e4cb9eeb-3669-4f5a-a4fe-640501e0e5dd">
 
 # Requirements:
 - Python 3.10.5 or above
