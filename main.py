@@ -14,12 +14,10 @@ from os import system
 parser = argparse.ArgumentParser(description='IPv4 Network Subnet Calculator')
 
 # Add the arguments
-ip_help = "The IP address to calculate\nExample: 192.168.0.100"
-parser.add_argument('-i', r'--IP', dest='ip', type=str, help=ip_help)
-subnet_help = "The subnet mask to calculate. CIDR can also be parsed\nExample: 255.255.255.0 or /24"
-parser.add_argument('-s', '-c', r'--CIDR', r'--Subnet', dest='subnet', type=int, help=subnet_help)
-display_help = "Display all the possible networks based on the IP and CIDR"
-parser.add_argument('-d', r'--Display', dest='display', action='store_true', help=display_help)
+ip_help = "The IP address to calculate\nExample: 192.168.0.100/24 or 10.0.0.1/255.255.255.0\nSupports both CIDR and Subnet Mask after the slash"
+parser.add_argument('-i', dest='ip', type=str, help=ip_help)
+subnet_help = "The netmask to subnet (optional)\nExample: 255.255.255.0 or /24"
+parser.add_argument('-s', dest='subnet', type=str, help=subnet_help)
 
 def display_logo() -> None:
     print("\033[H\033[2J\033[1m\033[36m")
@@ -31,41 +29,67 @@ def display_logo() -> None:
     print("░▀▀▀░▀▀▀░▀▀░░▀░▀░▀▀▀░░▀░░░░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀░▀░")
     print("\033[0m", end="")
 
-
-def get_address() -> str:
+def get_network(ip: str = None) -> (ipaddress.IPv4Network, str):
     """
     Get an IPv4 address from the user.
     """
+    if ip:
+        try:
+            if ip.count("/") == 0: ip += "/24"
+            net = ipaddress.IPv4Network(ip, strict=False)
+            ip = ip.split("/")[0]
+            return (net, ip)
+        except ValueError:
+            print("\n\033[36m[\033[31m!\033[36m]\033[0m Invalid IP Address!\n")
+            exit(1)
+    print()
     while True:
         try:
-            in_ = input("\033[36m[\033[31m?\033[36m]\033[0m Enter an IP Address (192.168.0.100): \033[36m")
-            if in_ == "": in_ = "192.168.0.100"
-            address = ipaddress.IPv4Address(in_)
-            return str(address)
+            in_ = input("\033[36m[\033[31m?\033[36m]\033[0m Enter an IP Address (192.168.0.100/24): \033[36m")
+            if in_ == "": in_ = "192.168.0.100/24"
+            if in_.count("/") == 0: in_ += "/24"
+            net = ipaddress.IPv4Network(in_, strict=False)
+            ip = in_.split("/")[0]
+            return (net, ip)
         except ValueError:
-            print("\n[!] Invalid IP Address!\n")
+            print("\n\033[36m[\033[31m!\033[36m]\033[0m Invalid IP Address!\n")
             continue
 
-def get_subnet_mask() -> str:
+def get_subnet(subnet: str = None) -> str:
     """
-    Get a subnet mask from the user.
+    Get a netmask from the user to subnet given network.
     """
+    if subnet:
+        if subnet == "0": 
+            print("\n\033[36m[\033[31m!\033[36m]\033[0m Invalid Netmask!\n")
+            exit(1)
+        try:
+            net = ipaddress.IPv4Network(f"10.0.0.0/{subnet}", strict=False)
+            return net.prefixlen
+        except ValueError:
+            print("\n\033[36m[\033[31m!\033[36m]\033[0m Invalid Netmask!\n")
+            exit(1)
+    print()
     while True:
         try:
-            in_ = input("\033[36m[\033[31m?\033[36m]\033[0m Enter a Subnet Mask (255.255.255.0 or /24): \033[36m").strip("/")
-            if in_ == "": in_ = "24"
-            _ = ipaddress.IPv4Network(f"192.168.0.100/{in_}", strict=False)
-            return str(in_)
+            in_ = input("\033[36m[\033[31m?\033[36m]\033[0m Enter a Netmask to subnet (optional): \033[36m")
+            if in_ == "0": 
+                print("\n\033[36m[\033[31m!\033[36m]\033[0m Invalid Netmask!\n")
+                continue
+            if in_ == "": return None
+            net = ipaddress.IPv4Network(f"10.0.0.0/{in_.strip('/')}", strict=False)
+            return net.prefixlen
         except ValueError:
-            print("\n[!] Invalid Subnet Mask!\n")
+            print("\n\033[36m[\033[31m!\033[36m]\033[0m Invalid Netmask!\n")
             continue
 
-def calculate(ip_address: str, subnet_mask: str, display_subnets: bool) -> None:
+def calculate(network: (ipaddress.IPv4Network, str), subnet: str) -> None:
     """
     Calculate the network and other information.
     """
-    # Create an IPv4Network objects
-    network = ipaddress.IPv4Network(f"{ip_address}/{subnet_mask}", strict=False)
+
+    ip = network[1]
+    network = network[0]
 
     # Get the network and broadcast addresses
     network_address = network.network_address
@@ -75,8 +99,11 @@ def calculate(ip_address: str, subnet_mask: str, display_subnets: bool) -> None:
     # Calculate the number of usable hosts
     num_usable_hosts = len(usable_hosts)
 
+    # Format the usable hosts
+    usable_hosts = f"{usable_hosts[0]} - {usable_hosts[-1]}" if usable_hosts[0] != usable_hosts[-1] else "NA"
+
     # Convert the IP address to binary
-    octets = ip_address.split('.')
+    octets = str(ip).split('.')
     binary_octets = [bin(int(octet))[2:].zfill(8) for octet in octets]
     bin_ip = '.'.join(binary_octets)
 
@@ -85,49 +112,66 @@ def calculate(ip_address: str, subnet_mask: str, display_subnets: bool) -> None:
 
     bin_mask = str(bin(int(network.netmask))[2:].zfill(32))
     bin_mask = '.'.join([bin_mask[i:i+8] for i in range(0, len(bin_mask), 8)])
-    
-    num_subnets = 2 ** len(bin_mask[:bin_mask.index("0")].split(".")[-1])
 
     # Print the results
-    print(f"\033[0mIP Address:             \033[36m{ip_address}")
+    print(f"\033[0mIP Address:             \033[36m{ip}")
     print(f"\033[0mIP Address (bin):       \033[36m{bin_ip}")
     print(f"\033[0mNetwork Address:        \033[36m{network_address}")
     print(f"\033[0mNetwork Address (bin):  \033[36m{bin_addr}")
-    print(f"\033[0mSubnet Mask:            \033[36m{network.netmask}")
-    print(f"\033[0mSubnet Mask (bin):      \033[36m{bin_mask}")
+    print(f"\033[0mNetmask:                \033[36m{network.netmask}")
+    print(f"\033[0mNetmask (bin):          \033[36m{bin_mask}")
     print(f"\033[0mCIDR Notation:          \033[36m/{network.prefixlen}")
     print(f"\033[0mBroadcast Address:      \033[36m{broadcast_address}")
-    print(f"\033[0mUsable IP Range:        \033[36m{usable_hosts[0]} - {usable_hosts[-1]}")
+    print(f"\033[0mUsable IP Range:        \033[36m{usable_hosts}")
     print(f"\033[0mNumber of Hosts:        \033[36m{network.num_addresses:,d}")
     print(f"\033[0mNumber of Usable Hosts: \033[36m{num_usable_hosts:,d}")
     print(f"\033[0mWildcard Mask:          \033[36m{network.hostmask}")
     print(f"\033[0mPrivate IP:             \033[36m{network.is_private}")
-    print(f"\033[0mTotal subnets:          \033[36m{num_subnets:,d}")
+    print()
 
-    # Display subnets
-    input_text = f"\n\033[36m[\033[31m?\033[36m]\033[0m Do you want to display \033[36m{num_subnets}\033[0m subnets? (Y/N): \033[36m"
-    display = "y" if display_subnets else input(input_text).lower()
-    if display == "y":
-        print("\033[0m")
-        print("{:<15} | {:^31} | {:<15}".format(
+    # Display subnets if present
+    if subnet is None or int(subnet) == int(network.prefixlen):
+        return
+    
+    # if CIDR is greater than current network, subnet it, else supernet it.
+    if int(subnet) > int(network.prefixlen): 
+        print("\033[0mSubneted Network Details:\n")
+        subnets = list(network.subnets(new_prefix=int(subnet)))
+        print(f"\033[0mNetmask:                \033[36m{subnets[0].netmask}")
+        print(f"\033[0mWildcard Mask:          \033[36m{subnets[0].hostmask}")
+        print(f"\033[0mCIDR Notation:          \033[36m/{int(subnet)}")
+        print(f"\033[0mHosts per network:      \033[36m{2 ** (32 - int(subnet)) - 2:,d}")
+
+        # if CIDR is 32, do not print subnets
+        if int(subnet) == 32: 
+            return
+
+        print("\n\033[0m{:<15} | {:^31} | {:<15}".format(
             "Network Address", "Host Range", "Broadcast Address"))
         print("-" * 72)
-
-        # Calculate the starting network address
-        bin_mask = bin(int(network.netmask))[2:].index("0") // 8 * 8
-        add_mask = bin(int(network.network_address))[2:]
-        starting_network = add_mask[:bin_mask] + "0" * (32 - bin_mask)
-        starting_network = ipaddress.IPv4Network(int(starting_network, 2), strict=False)
-
-        # Calculate the size of each subnet
-        for i in range(num_subnets):
-            subnet_size = 2 ** (32 - network.prefixlen)
-            subnet = starting_network.network_address + i * subnet_size
-            host_range = [subnet + 1, subnet + subnet_size - 2]
-            broadcast_address = subnet + subnet_size - 1
-            print("{:<24} | {:<22} - {:<24} | {:<24}".format(
-                f"\033[36m{subnet}\033[0m", f"\033[36m{host_range[0]}\033[0m", 
-                f"\033[36m{host_range[-1]}\033[0m", f"\033[36m{broadcast_address}\033[0m"))
+        for subnet in subnets:
+            host_range = list(subnet.hosts())
+            host_range = host_range if len(host_range) > 1 else [host_range[0], host_range[0]]
+            print("{:<24} | {:<22} - {:>24} | {:<24}".format(
+                f"\033[36m{subnet.network_address}\033[0m", f"\033[36m{host_range[1]}\033[0m", 
+                f"\033[36m{host_range[-2]}\033[0m", f"\033[36m{subnet.broadcast_address}\033[0m"
+                ))
+    else: 
+        print("\033[0mSuperneted Network Details:\n")
+        subnets = network.supernet(new_prefix=int(subnet))
+        print(f"\033[0mNetmask:                \033[36m{subnets.netmask}")
+        print(f"\033[0mWildcard Mask:          \033[36m{subnets.hostmask}")
+        print(f"\033[0mCIDR Notation:          \033[36m/{int(subnet)}")
+        print(f"\033[0mHosts/Network:          \033[36m{2 ** (32 - int(subnet)) - 2:,d}")
+        
+        print("\n\033[0m{:<15} | {:^31} | {:<15}".format(
+            "Network Address", "Host Range", "Broadcast Address"))
+        print("-" * 72)
+        print("{:<24} | {:<22} - {:>24} | {:<24}".format(
+            f"\033[36m{subnets[0]}\033[0m", f"\033[36m{subnets[1]}\033[0m", 
+            f"\033[36m{subnets[-2]}\033[0m", f"\033[36m{subnets.broadcast_address}\033[0m"
+            ))
+    print()
 
 def main():
     system("") # Fix for ANSI escape codes on Windows
@@ -137,23 +181,18 @@ def main():
 
     args = parser.parse_args()
     
+    ip = None
     if args.ip:
-        ip_address = args.ip
-    else:
-        print()
-        ip_address = get_address()
+        ip = args.ip
+    subnet = None
     if args.subnet:
-        subnet_mask = args.subnet
-    else:
-        print()
-        subnet_mask = get_subnet_mask()
-    if args.display:
-        display = True
-    else:
-        display = False
+        subnet = args.subnet
+
+    network = get_network(ip)
+    subnet = get_subnet(subnet)
 
     print()
-    calculate(ip_address, subnet_mask, display)
+    calculate(network, subnet)
 
 if __name__ == "__main__":
     main()
