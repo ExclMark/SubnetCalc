@@ -15,10 +15,9 @@ Allows you to subnet/supernet any given network, and provides different useful i
 - `python3 main.py` (or `python main.py` if on Windows)
 
 You can also run with arg keys:
-- `python3 main.py -i 192.168.0.100 -s 26 -d`
+- `python3 main.py -i 192.168.0.100/24 -s /26`
   
-- `-i` - IP address
-- `-s` - Subnet mask or CIDR
-- `-d` - Display all possible subnets
+- `-i` - IP address to subnet/supernet
+- `-s` - Netmask (binary or CIDR)
 
 Use `python3 main.py --help` to get more info
