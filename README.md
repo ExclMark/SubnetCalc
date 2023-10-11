@@ -3,6 +3,8 @@ Simple console-based [subnet](https://en.wikipedia.org/wiki/Subnet)/[supernet](h
 
 Allows you to subnet/supernet any given network, and provides different useful info about IPv4 address.
 
+# [Try this out on Replit!](https://replit.com/@ExclMark/SubnetCalc)
+
 # Preview:
 <img width="657" alt="subnet_calculator" src="https://github.com/ExclMark/SubnetCalc/assets/43936063/53b26801-cb8e-4857-890d-1b12c8fff7ef">
 
